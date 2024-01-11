@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <ctype.h>
+#include <stdbool.h>
 
 #define TAMANHO 1000
 
@@ -41,12 +43,23 @@ Node *createNode(char *key, int line_num, char *content)
 	return newNode;
 }
 
+void toLowerCase(char *str)
+{
+	int len = strlen(str);
+	for (int i = 0; i < len; i++)
+	{
+		str[i] = tolower(str[i]);
+	}
+}
+
 Node *insert(Node *root, char *key, int line_num, char *content)
 {
 	if (root == NULL)
 	{
 		return createNode(key, line_num, content);
 	}
+
+	toLowerCase(key);
 
 	int cmp = strcmp(key, root->key);
 
@@ -62,7 +75,7 @@ Node *insert(Node *root, char *key, int line_num, char *content)
 		if (last != NULL && strcmp(last->line_content, content) == 0)
 		{
 			root->count++;
-			return root; // Avoid duplicating identical lines for the same word
+			return root;
 		}
 		last->next = (Line *)malloc(sizeof(Line));
 		last->next->line_number = line_num;
@@ -92,6 +105,25 @@ int countOccurrences(Line *lines)
 		current = current->next;
 	}
 	return count;
+}
+
+int isPunctuation(char c)
+{
+	return ispunct(c);
+}
+
+void processWord(char *word)
+{
+	int len = strlen(word);
+	int i, j = 0;
+	for (i = 0; i < len; i++)
+	{
+		if (!isPunctuation(word[i]))
+		{
+			word[j++] = tolower(word[i]);
+		}
+	}
+	word[j] = '\0';
 }
 
 void printLines(Line *lines, int start_line)
@@ -160,6 +192,7 @@ int main(int argc, char **argv)
 			while ((palavra = strsep(&copia_ponteiro_linha, " ")))
 			{
 				contador_palavra++;
+				processWord(palavra);
 				root = insert(root, palavra, contador_linha, linha);
 			}
 
@@ -176,6 +209,7 @@ int main(int argc, char **argv)
 		printf("> ");
 
 		char user_command[50];
+		struct timeval start_search, end_search;
 
 		while (scanf("%s", user_command))
 		{
@@ -188,7 +222,11 @@ int main(int argc, char **argv)
 				char search_word[50];
 				scanf("%s", search_word);
 
+				gettimeofday(&start_search, NULL);
+
 				Node *found = search(root, search_word);
+
+				gettimeofday(&end_search, NULL);
 				if (found != NULL)
 				{
 					int occurrences = found->count;
@@ -199,6 +237,9 @@ int main(int argc, char **argv)
 				{
 					printf("Palavra '%s' não encontrada.\n", search_word);
 				}
+
+				long search_time = (end_search.tv_sec * 1000000 + end_search.tv_usec) - (start_search.tv_sec * 1000000 + start_search.tv_usec);
+				printf("Tempo de busca: %ld ms\n", search_time / 1000);
 			}
 			else
 			{
