@@ -52,6 +52,17 @@ void toLowerCase(char *str)
 	}
 }
 
+void removeHyphen(char *str)
+{
+	for (int i = 0; str[i]; i++)
+	{
+		if (str[i] == '-')
+		{
+			str[i] = ' '; // Substitui o hífen por um espaço
+		}
+	}
+}
+
 Node *insert(Node *root, char *key, int line_num, char *content)
 {
 	if (root == NULL)
@@ -59,6 +70,7 @@ Node *insert(Node *root, char *key, int line_num, char *content)
 		return createNode(key, line_num, content);
 	}
 
+	removeHyphen(key);
 	toLowerCase(key);
 
 	int cmp = strcmp(key, root->key);
@@ -69,18 +81,29 @@ Node *insert(Node *root, char *key, int line_num, char *content)
 		Line *last = NULL;
 		while (current != NULL)
 		{
+			if (strcmp(current->line_content, content) == 0)
+			{
+				return root;
+			}
 			last = current;
 			current = current->next;
 		}
-		if (last != NULL && strcmp(last->line_content, content) == 0)
+
+		if (last != NULL)
 		{
-			root->count++;
-			return root;
+			last->next = (Line *)malloc(sizeof(Line));
+			last->next->line_number = line_num;
+			strcpy(last->next->line_content, content);
+			last->next->next = NULL;
 		}
-		last->next = (Line *)malloc(sizeof(Line));
-		last->next->line_number = line_num;
-		strcpy(last->next->line_content, content);
-		last->next->next = NULL;
+		else
+		{
+			root->lines = (Line *)malloc(sizeof(Line));
+			root->lines->line_number = line_num;
+			strcpy(root->lines->line_content, content);
+			root->lines->next = NULL;
+		}
+
 		root->count++;
 	}
 	else if (cmp < 0)
@@ -112,18 +135,35 @@ int isPunctuation(char c)
 	return ispunct(c);
 }
 
-void processWord(char *word)
+void processWord(char *word, Node *root, int line_num, char *content)
 {
 	int len = strlen(word);
 	int i, j = 0;
 	for (i = 0; i < len; i++)
 	{
-		if (!isPunctuation(word[i]))
+		if (!isPunctuation(word[i]) || word[i] == '-')
 		{
-			word[j++] = tolower(word[i]);
+			if (word[i] == '-')
+			{
+				if (j > 0)
+				{
+					word[j] = '\0'; // Process the part of the word before hyphen
+					insert(root, word, line_num, content);
+					j = 0;
+				}
+			}
+			else
+			{
+				word[j++] = tolower(word[i]);
+			}
 		}
 	}
-	word[j] = '\0';
+
+	if (j > 0)
+	{
+		word[j] = '\0'; 
+		insert(root, word, line_num, content);
+	}
 }
 
 void printLines(Line *lines, int start_line)
@@ -192,7 +232,7 @@ int main(int argc, char **argv)
 			while ((palavra = strsep(&copia_ponteiro_linha, " ")))
 			{
 				contador_palavra++;
-				processWord(palavra);
+				processWord(palavra, root, contador_linha, linha);
 				root = insert(root, palavra, contador_linha, linha);
 			}
 
